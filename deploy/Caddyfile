@@ -1,0 +1,61 @@
+# Caddy configuration for the jur10n control plane.
+# The API stays private on 127.0.0.1:3000; only Caddy is public.
+# TODO(需要补充)：把下面两个域名换成你自己的。本机真实配置放在 gitignored 的 deploy/Caddyfile.local，deploy.sh 会优先使用它。
+
+(jur10n_headers) {
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+}
+
+(jur10n_api_headers) {
+	header {
+		Cache-Control "no-store"
+		Pragma "no-cache"
+	}
+}
+
+server.example.com { # TODO(需要补充)：你的 API 域名
+	import jur10n_headers
+	import jur10n_api_headers
+	# VPN 模块：Clash 订阅静态文件（token 文件名即凭证，no-store 不缓存）
+	handle_path /vpn/* {
+		root * /srv/jur10n/vpn
+		file_server
+	}
+	handle {
+		request_body {
+			max_size 16MB
+		}
+		reverse_proxy 127.0.0.1:3000
+	}
+}
+
+dashboard.example.com { # TODO(需要补充)：你的后台域名
+	import jur10n_headers
+	handle /api/* {
+		import jur10n_api_headers
+		request_body {
+			max_size 86MB
+		}
+		reverse_proxy 127.0.0.1:3000
+	}
+	handle /assets/* {
+		header Cache-Control "public, max-age=31536000, immutable"
+		root * /srv/jur10n/dashboard/dist
+		encode zstd gzip
+		file_server
+	}
+	handle {
+		header Cache-Control "no-cache, must-revalidate"
+		root * /srv/jur10n/dashboard/dist
+		encode zstd gzip
+		try_files {path} /index.html
+		file_server
+	}
+}

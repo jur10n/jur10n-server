@@ -1,0 +1,10 @@
+# /etc/cron.d/starlight-sqlite-backup template
+#
+# Install the backup script at /usr/local/bin/starlight-sqlite-backup.sh and
+# verify the database path before enabling this entry. This template uses no
+# network destination and does not overwrite /opt/starlight.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Run daily at 03:17 UTC. The script takes an advisory lock to avoid overlap.
+17 3 * * * root SQLITE_DATABASE_PATH=/srv/jur10n/data/app.sqlite3 FILES_ROOT=/srv/jur10n/data/files SQLITE_BACKUP_DIR=/srv/jur10n/backups/sqlite SQLITE_BACKUP_RETENTION_DAYS=14 /usr/local/bin/jur10n-backup.sh >>/var/log/jur10n-backup.log 2>&1

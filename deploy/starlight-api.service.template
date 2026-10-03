@@ -1,0 +1,39 @@
+[Unit]
+Description=jur10n API service
+Documentation=about:blank
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/srv/jur10n/api/src/server.js
+
+[Service]
+Type=exec
+User=jur10n
+Group=jur10n
+WorkingDirectory=/srv/jur10n/api
+EnvironmentFile=-/etc/jur10n/jur10n.env
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=3000
+ExecStart=/usr/bin/node /srv/jur10n/api/src/server.js
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+KillSignal=SIGINT
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/jur10n/data /srv/jur10n/logs
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+SystemCallArchitectures=native
+LimitNOFILE=65536
+MemoryMax=768M
+TasksMax=256
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target
