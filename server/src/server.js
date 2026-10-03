@@ -54,6 +54,9 @@ const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "owner";
 const INITIAL_PASSWORD_FILE = process.env.INITIAL_ADMIN_PASSWORD_FILE || dirname(DATABASE_PATH) + "/initial-admin-password";
 const SESSION_COOKIE = "jur10n_session";
 const CSRF_COOKIE = "jur10n_csrf";
+// Legacy v1 client protocol gate. The compatibility window is closed unless the
+// service environment explicitly sets ENABLE_V1_PROTOCOL=1 (see API.md §5).
+const ENABLE_V1_PROTOCOL = ["1", "true", "yes", "on"].includes(String(process.env.ENABLE_V1_PROTOCOL || "").trim().toLowerCase());
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_CLIENT_PACKET_BYTES = 256 * 1024;
 const MAX_REPORT_BYTES = 128 * 1024;
@@ -828,8 +831,10 @@ export async function buildApp(options = {}) {
     return reply.code(200).header("content-type", "application/octet-stream").header("cache-control", "no-store").header("x-content-type-options", "nosniff").send(response);
   });
 
-  // v1 remains available as an explicitly scoped legacy compatibility window.
+  // v1 remains available as an explicitly scoped legacy compatibility window,
+  // but the window is closed unless ENABLE_V1_PROTOCOL is turned on.
   app.post("/api/v1/client", async (request, reply) => {
+    if (!ENABLE_V1_PROTOCOL) return reply.code(410).header("cache-control", "no-store").send({ ok: false, error: "V1_PROTOCOL_DISABLED", hint: "Legacy v1 protocol is disabled. Migrate clients to POST /api/v2/client/{software_slot}, or set ENABLE_V1_PROTOCOL=1 in the service environment to re-enable the compatibility window." });
     const rate = app.clientRateLimit(request);
     let response;
     try {

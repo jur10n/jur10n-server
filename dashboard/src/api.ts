@@ -73,10 +73,15 @@ function saveCsrfToken(token: string | null | undefined) {
 
 function clearCsrfToken() { saveCsrfToken('') }
 
+function isBinaryBody(body: unknown): body is BodyInit {
+  return body instanceof Blob || body instanceof ArrayBuffer || ArrayBuffer.isView(body)
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const method = String(options.method || 'GET').toUpperCase()
   const headers = new Headers(options.headers)
-  if (options.body !== undefined) headers.set('content-type', 'application/json')
+  const binary = isBinaryBody(options.body)
+  if (options.body !== undefined && !binary) headers.set('content-type', 'application/json')
   headers.set('accept', 'application/json')
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
     const token = readCsrfToken()
@@ -88,7 +93,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     method,
     headers,
     credentials: 'include',
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    body: options.body === undefined ? undefined : binary ? (options.body as BodyInit) : JSON.stringify(options.body),
   })
   const contentType = response.headers.get('content-type') || ''
   let payload: unknown = null
@@ -214,14 +219,6 @@ export interface VpnInfo {
   [key: string]: unknown
 }
 
-async function uploadFileBase64(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer())
-  let binary = ''
-  const chunkSize = 0x8000
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize))
-  return btoa(binary)
-}
-
 export const api = {
   login: async (username: string, password: string) => { const payload = await request<AuthResponse>('/api/admin/login', { method: 'POST', body: { username, password } }); saveCsrfToken(payload.csrfToken); return payload },
   me: async () => { const payload = await request<AuthResponse>('/api/admin/me'); saveCsrfToken(payload.csrfToken); return payload },
@@ -273,7 +270,32 @@ export const api = {
 
   // File resources.
   resourcesFor: (slug: string) => request<{ items: ResourceFile[] }>(`/api/admin/software/${encodeURIComponent(slug)}/resources`),
-  uploadResource: async (slug: string, file: File) => request<{ resource: ResourceFile }>(`/api/admin/software/${encodeURIComponent(slug)}/resources`, { method: 'POST', body: { originalName: file.name, content: await uploadFileBase64(file), mime: file.type || 'application/octet-stream' } }),
+  uploadResource: async (slug: string, file: File) => {
+    // Chunked upload session: init -> PUT 4 MiB chunks -> complete. Every request
+    // stays small, so no whole-file base64 copy is held in memory.
+    const base = `/api/admin/software/${encodeURIComponent(slug)}/uploads`
+    const init = await request<{ uploadId: string; offset: number }>(base, { method: 'POST', body: { originalName: file.name, size: file.size, mime: file.type || 'application/octet-stream' } })
+    const chunkSize = 4 * 1024 * 1024
+    let offset = Number(init.offset) || 0
+    while (offset < file.size) {
+      const chunk = file.slice(offset, Math.min(offset + chunkSize, file.size))
+      try {
+        const part = await request<{ offset: number; complete: boolean }>(`${base}/${encodeURIComponent(init.uploadId)}`, {
+          method: 'PUT',
+          headers: { 'x-upload-offset': String(offset), 'content-type': 'application/octet-stream' },
+          body: chunk,
+        })
+        offset = Number(part.offset) || offset + chunk.size
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 409) {
+          const expected = (error.details as { expectedOffset?: number } | null)?.expectedOffset
+          if (typeof expected === 'number' && expected >= 0 && expected < offset) { offset = expected; continue }
+        }
+        throw error
+      }
+    }
+    return request<{ resource: ResourceFile }>(`${base}/${encodeURIComponent(init.uploadId)}/complete`, { method: 'POST', body: {} })
+  },
   deleteResource: (slug: string, id: string | number) => request<{ ok: boolean }>(`/api/admin/software/${encodeURIComponent(slug)}/resources/${encodeURIComponent(String(id))}`, { method: 'DELETE' }),
 
   // API 文档为协议级静态说明，不按软件槽位加载。

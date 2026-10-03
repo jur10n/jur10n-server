@@ -1,3 +1,6 @@
+// 调试脚本：走已废弃的 v1 协议。生产服务器默认禁用 v1（未设 ENABLE_V1_PROTOCOL 时
+// 一律 410 V1_PROTOCOL_DISABLED）。临时启用：在 /etc/jur10n/jur10n.env 加
+// ENABLE_V1_PROTOCOL=1 并重启 jur10n-api。新的调试请改走 v2。
 import { openDatabase } from "/srv/jur10n/api/src/db.js";
 import { hmacHex, encryptClientPacket, decryptClientResponse, newNonce } from "/srv/jur10n/api/src/crypto.js";
 const db = openDatabase(process.env.SQLITE_DATABASE_PATH);

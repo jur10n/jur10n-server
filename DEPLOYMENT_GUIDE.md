@@ -524,6 +524,8 @@ curl --fail -I https://dashboard.example.com/
 
 ### 8.1 文件大小说明
 
+> 2026-10-04 更新：Dashboard 管理端上传已迁移到**分片上传会话**（init → 4 MiB PUT 分片 → complete，服务端校验偏移和 SHA-256），单分片请求体只有 4 MiB。旧的"完整文件 base64 + JSON"路由仍保留作遗留兼容，但前端不再使用。
+
 当前代码的文件限制要区分三个概念：
 
 1. 客户端 `file_chunk` 单次下载块：**64 KiB**；

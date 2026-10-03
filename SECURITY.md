@@ -318,7 +318,7 @@ AAD 绑定意味着：**密文挪到别的软件槽位、别的 key 版本、请
 
 ---
 
-## 12. 当前实况清单（对照用）
+## 12. 当前实况清单（2026-10-04 复核）
 
 | 项 | 状态 |
 | --- | --- |
@@ -326,22 +326,24 @@ AAD 绑定意味着：**密文挪到别的软件槽位、别的 key 版本、请
 | Node 24 + Fastify，监听 127.0.0.1:3000 | ✅ |
 | `jur10n-api.service` systemd 沙箱 | ✅ |
 | Caddy 双域名 HTTPS（自动证书） | ✅ |
+| HTTP→HTTPS 强制 | ✅ 80 端口 308/301 全跳转 + HSTS 一年（实测） |
 | UFW active：22, 80, 443（+8443 tcp/udp VPN） | ✅ |
 | SSH 密钥登录 | ✅ |
-| SSH 密码认证 | ⚠️ 仍开启，待关闭 |
+| SSH 密码认证 | ✅ 已关闭（`PasswordAuthentication no`，实测密码被拒） |
+| v1 遗留协议 | ✅ 默认关闭（410），需 `ENABLE_V1_PROTOCOL=1` 显式开启 |
 | Cloudflare 橙云 + Full (strict) | ✅ |
 | 一致性备份 cron | ✅ |
-| sing-box VPN 模块 | ✅ |
+| sing-box VPN 模块（含 DoH 段） | ✅ |
 
 ---
 
-## 13. 已知弱点 / 待办（给朋友的前车之鉴）
+## 13. 已知弱点 / 处置状态（2026-10-04 复核）
 
-1. **SSH 密码认证未关**——密钥稳定后第一件事就是关掉它。
-2. v1 遗留协议仍在跑（兼容旧客户端），它绑定 `MASTER_SECRET` 且无槽位隔离，尽早淘汰 v1 客户端。
-3. 管理端上传是“整文件 base64 + JSON”进内存——上限被刻意压住；要支持大文件需重构成流式/分片，不能只放宽 body limit。
-4. 服务器 DNS 上游污染 → 一切依赖域名解析的服务（sing-box）必须 DoH。
-5. Windows 本地路径含中文时 npm/工具链 shim 会坏——部署脚本尽量在服务器上跑。
+1. ~~SSH 密码认证未关~~ **已解决**：`/etc/ssh/sshd_config.d/50-jur10n-key.conf` 改为 `PasswordAuthentication no` + `PermitRootLogin prohibit-password`，实测密钥登录正常、纯密码尝试被拒（`Permission denied (publickey)`）。
+2. ~~v1 遗留协议常开~~ **已解决**：v1 默认关闭——`POST /api/v1/client` 一律返回 `410 V1_PROTOCOL_DISABLED`；确需兼容旧客户端时，在 `/etc/jur10n/jur10n.env` 设 `ENABLE_V1_PROTOCOL=1` 并重启 `jur10n-api`。v1 绑定 `MASTER_SECRET` 且无槽位隔离，能不用就不用。
+3. ~~管理端整文件 base64 上传进内存~~ **已解决**：Dashboard 已迁移到分片上传会话（init → 4 MiB PUT 分片 → complete，服务端校验偏移与 SHA-256，单请求体 ≤8 MiB）；旧的 base64 路由仅作遗留兼容，前端不再调用。
+4. 服务器 DNS 上游污染 → **持续缓解**：sing-box `dns` 段强制 DoH（1.1.1.1 / 8.8.8.8 over TCP 443）+ `ipv4_only`，已核实配置在位；不要删。
+5. Windows 中文路径 npm/工具链 shim 问题 → **已缓解**：dashboard 的 `npm run build` 改为直接 `node node_modules/typescript/bin/tsc` + `node node_modules/vite/bin/vite.js`，绕开 PATH 中 `&` 截断；部署类脚本仍建议在服务器上跑。
 
 ---
 

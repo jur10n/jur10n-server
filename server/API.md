@@ -484,6 +484,8 @@ HMAC-SHA256(MASTER_SECRET, "ip:" + ip)
 
 ## 5. v1 兼容接口
 
+> **默认禁用（2026-10-04 起）**：服务端未显式设置 `ENABLE_V1_PROTOCOL=1` 时，`/api/v1/client` 一律返回 `410 V1_PROTOCOL_DISABLED`。该开关只应用于过渡期临时兼容旧客户端；新客户端一律走 v2。下文协议描述仅在开关打开时生效。
+
 ### 5.1 Endpoint、密文和公共请求
 
 ```http

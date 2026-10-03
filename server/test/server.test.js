@@ -8,6 +8,8 @@ import { after, test } from "node:test";
 // module load time, so it must be set before importing the application.
 const filesRoot = mkdtempSync(join(tmpdir(), "jur10n-server-files-"));
 process.env.FILES_ROOT = filesRoot;
+// Exercise the explicit legacy window: production defaults ENABLE_V1_PROTOCOL off.
+process.env.ENABLE_V1_PROTOCOL = "1";
 
 const { buildApp } = await import("../src/server.js");
 const { openDatabase, nowIso } = await import("../src/db.js");
