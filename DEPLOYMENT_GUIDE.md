@@ -957,6 +957,8 @@ install -o root -g root -m 0644 \
 
 ### 15.2 发布前备份
 
+> 2026-10-04 起，以下手工流程已脚本化：`bash deploy/release.sh api|web|all`（本地测试 → staging → 原子切换 → healthz 门闸 → 失败自动回滚），回滚用 `bash deploy/release.sh rollback`。流程与手工步骤等价，细节见 [WORKFLOW.md](WORKFLOW.md)。了解原理继续读本节。
+
 ```bash
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 mkdir -p /srv/jur10n/backups/pre-$STAMP

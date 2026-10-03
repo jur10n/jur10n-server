@@ -56,7 +56,7 @@ npm run dev
 
 PyQt 客户端：`run-pyqt-client.ps1`，或先 `pip install -r examples/requirements.txt` 再运行 `examples/pyqt_client.py`。虚拟环境在 `.venv/`。
 
-换机器、换域名或换供应商时，按 [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) 做。协议细节在 [server/API.md](server/API.md)。
+换机器、换域名或换供应商时，按 [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) 做。日常改代码、加功能、对接 app、发布与回滚的流程见 [WORKFLOW.md](WORKFLOW.md)（一键发布：`bash deploy/release.sh api|web|all`）。协议细节在 [server/API.md](server/API.md)。
 
 ## 公开仓库说明：需要补充的占位符
 

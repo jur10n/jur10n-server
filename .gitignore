@@ -20,6 +20,7 @@ vpn/deploy.env
 
 # 本机真实 Caddy 配置（含真实域名），不入库
 deploy/Caddyfile.local
+deploy/deploy.env
 
 backups/
 *.sqlite3
